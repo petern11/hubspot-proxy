@@ -18,21 +18,24 @@ app.use((req, res, next) => {
 
 // Replace with your actual HubSpot Private App Access Token (from .env)
 const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
+const url = 'https://api.hubapi.com/crm/v3/objects/contacts';
 
 // Route to fetch contacts from HubSpot API
 app.get("/api/contacts", async (req, res) => {
     try {
-        const response = await axios.get(
-            "https://api.hubapi.com/crm/v3/objects/contacts?property=zip&property=firstname&property=lastname​",
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                // params: {
-                //     properties: ["zip"], // Pass properties as query parameters
-                // },
-            }
-        );
+        const response = await axios.get(url, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            params: { 
+                properties: "email,lastname,firstname,phone,address,city,state,zip"
+            },
+        });
+
+        response.data.results.forEach(item => {
+            console.log('item.properties',item.properties);
+            
+        });
         res.json(response.data);
     } catch (error) {
         console.error("Error fetching contacts:", error);
