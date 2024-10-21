@@ -120,13 +120,18 @@ app.post("/api/upload-file", upload.single("file"), async (req, res) => {
             },
         });
 
+
+ 
+        
         // If the file exists, return its details
         if (searchResponse.data?.results.length > 0) {
             const existingFile = searchResponse.data.results[0];
+            
             console.log(`File already exists: ${existingFile.url}`);
             return res.json({
                 message: "File already exists.",
-                fileUrl: existingFile.url,
+                // The url back from search is not the right url to view publicly
+                fileUrl: `https://api-na1.hubspot.com/filemanager/api/v2/files/${existingFile.id}/signed-url-redirect?portalId=47687955`,
                 fileId: existingFile.id,
             });
         }
@@ -139,7 +144,8 @@ app.post("/api/upload-file", upload.single("file"), async (req, res) => {
         formData.append("file", fileBuffer, hashedFileName); // Use the original file name for upload
         formData.append("options", JSON.stringify({ access: "PRIVATE" })); // Set the file as private
         formData.append("folderPath", folderPath || "/"); // Default folder path to root
-
+        formData.append("access", "PUBLIC_NOT_INDEXABLE"); // Default folder path to root
+        
         // Send the file to HubSpot using the File Manager API
         const uploadResponse = await axios.post("https://api.hubapi.com/files/v3/files", formData, {
             headers: {
