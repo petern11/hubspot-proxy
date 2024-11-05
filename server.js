@@ -23,7 +23,10 @@ const upload = multer({ storage: storage });
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization"
+    );
     next();
 });
 
@@ -42,7 +45,8 @@ app.get("/api/contacts", async (req, res) => {
                 Authorization: `Bearer ${accessToken}`,
             },
             params: {
-                properties: "email,lastname,firstname,phone,address,city,state,zip",
+                properties:
+                    "email,lastname,firstname,phone,address,city,state,zip",
             },
         });
 
@@ -68,7 +72,7 @@ app.get("/api/lists", async (req, res) => {
             },
         });
 
-        console.log('response.data.lists',response.data.lists);
+        console.log("response.data.lists", response.data.lists);
         res.json(response.data.lists);
     } catch (error) {
         console.error("Error fetching lists:", error);
@@ -80,16 +84,23 @@ app.get("/api/lists", async (req, res) => {
 app.post("/api/upload-template", async (req, res) => {
     try {
         const templateData = req.body;
-        const response = await axios.post("https://api.hubapi.com/content/api/v2/templates", templateData, {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
+        const response = await axios.post(
+            "https://api.hubapi.com/content/api/v2/templates",
+            templateData,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        );
 
         res.json(response.data);
     } catch (error) {
-        console.error("Error uploading template:", error.response ? error.response.data : error.message);
+        console.error(
+            "Error uploading template:",
+            error.response ? error.response.data : error.message
+        );
         res.status(500).send("Error uploading template to HubSpot");
     }
 });
@@ -107,31 +118,33 @@ app.post("/api/upload-file", upload.single("file"), async (req, res) => {
 
         // Step 1: Generate a 19-character hash of the file name + file size for searching
         // Hubspot's file search API only supports up to 19-character or less when searching by name.
-        const hashedFileName = generateFixedLengthString(fileName + fileSize.toString());
+        const hashedFileName = generateFixedLengthString(
+            fileName + fileSize.toString()
+        );
 
         // Step 2: Search for the file in HubSpot using the hashed file name
-        const searchResponse = await axios.get("https://api.hubapi.com/files/v3/files/search", {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-            params: {
-                name: hashedFileName, // Use the hashed file name for the search
-                limit: 1, // We're only interested in checking if the file exists
-            },
-        });
+        const searchResponse = await axios.get(
+            "https://api.hubapi.com/files/v3/files/search",
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params: {
+                    name: hashedFileName, // Use the hashed file name for the search
+                    limit: 1, // We're only interested in checking if the file exists
+                },
+            }
+        );
 
-
- 
-        
         // If the file exists, return its details
         if (searchResponse.data?.results.length > 0) {
             const existingFile = searchResponse.data.results[0];
-            
+
             console.log(`File already exists: ${existingFile.url}`);
             return res.json({
                 message: "File already exists.",
                 // The url back from search is not the right url to view publicly
-                fileUrl: `https://api-na1.hubspot.com/filemanager/api/v2/files/${existingFile.id}/signed-url-redirect?portalId=47687955`,
+                fileUrl: `https://app-eu1.hubspot.com/api/filemanager/api/v2/files/${existingFile.id}/signed-url-redirect?portalId=145061927`,
                 fileId: existingFile.id,
             });
         }
@@ -142,17 +155,23 @@ app.post("/api/upload-file", upload.single("file"), async (req, res) => {
         // Create a FormData object to send the file
         const formData = new FormData();
         formData.append("file", fileBuffer, hashedFileName); // Use the original file name for upload
-        formData.append("options", JSON.stringify({ access: "PRIVATE" })); // Set the file as private
+        formData.append(
+            "options",
+            JSON.stringify({ access: "PUBLIC_NOT_INDEXABLE" })
+        ); // Set the file as private
         formData.append("folderPath", folderPath || "/"); // Default folder path to root
-        formData.append("access", "PUBLIC_NOT_INDEXABLE"); // Default folder path to root
-        
+
         // Send the file to HubSpot using the File Manager API
-        const uploadResponse = await axios.post("https://api.hubapi.com/files/v3/files", formData, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                ...formData.getHeaders(), // Important to include correct headers for form data
-            },
-        });
+        const uploadResponse = await axios.post(
+            "https://api.hubapi.com/files/v3/files",
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    ...formData.getHeaders(), // Important to include correct headers for form data
+                },
+            }
+        );
 
         const uploadedFile = uploadResponse.data;
         res.json({
@@ -161,8 +180,33 @@ app.post("/api/upload-file", upload.single("file"), async (req, res) => {
             fileId: uploadedFile.id,
         });
     } catch (error) {
-        console.error("Error handling file upload:", error.response ? error.response.data : error.message);
+        console.error(
+            "Error handling file upload:",
+            error.response ? error.response.data : error.message
+        );
         res.status(500).send("Error uploading file to HubSpot");
+    }
+});
+
+app.get("/api/get-lists", async (req, res) => { // Change app.post to app.get if this is just fetching data
+    try {
+        const response = await axios.get(
+            "https://api.hubapi.com/contacts/v1/lists",
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        res.json(response.data); // Send the HubSpot API response back to the client
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "An error occurred while fetching contacts.",
+            error: error.response ? error.response.data : error.message, // More error details
+        });
     }
 });
 
